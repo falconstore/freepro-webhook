@@ -1,0 +1,12 @@
+{
+  "name": "freepro-webhook",
+  "version": "1.0.0",
+  "description": "Webhook para processar pagamentos da LastLink",
+  "scripts": {
+    "dev": "vercel dev",
+    "build": "vercel build"
+  },
+  "dependencies": {
+    "firebase-admin": "^12.0.0"
+  }
+}
