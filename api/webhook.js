@@ -16,65 +16,91 @@ export default async function handler(req, res) {
     console.log(`Evento: ${Event}`);
     console.log(`É teste: ${IsTest ? 'SIM' : 'NÃO'}`);
     
-    // Eventos que ATIVAM conta
+    // Eventos que ATIVAM conta baseado nos eventos reais da LastLink
     const activationEvents = [
-      'Purchase_Complete', // Compra Completa
-      'Subscription_Renewal_Complete', // Renovação Completa
-      'Payment_Approved' // Pagamento Aprovado
+      'Purchase_Order_Confirmed',  // Pedido de Compra Confirmado
+      'Recurrent_Payment',         // Pagamento Recorrente/Renovação
+      'Purchase_Approved',         // Compra Aprovada
+      'Payment_Approved'           // Pagamento Aprovado
     ];
     
-    // Eventos que DESATIVAM conta
-    const deactivationEvents = [
-      'Subscription_Expired', // Assinatura Expirada
-      'Subscription_Cancelled' // Assinatura Cancelada
-    ];
-    
-    if (activationEvents.includes(Event) && Data) {
+    if (activationEvents.includes(Event) && Data && !IsTest) {
       const email = Data.Buyer?.Email;
       const value = Data.Purchase?.Price?.Value || Data.Purchase?.OriginalPrice?.Value;
       const paymentMethod = Data.Purchase?.Payment?.PaymentMethod;
       const buyerName = Data.Buyer?.Name;
+      const paymentDate = Data.Purchase?.PaymentDate;
       
-      if (email && value && !IsTest) { // Só processar se NÃO for teste
+      if (email && value) {
         console.log('=== ATIVANDO CONTA ===');
         console.log(`Email: ${email}`);
         console.log(`Nome: ${buyerName}`);
         console.log(`Valor: R$ ${value}`);
         console.log(`Método: ${paymentMethod}`);
+        console.log(`Data Pagamento: ${paymentDate}`);
         
-        // Determinar plano pelo valor
+        // Determinar plano pelo valor (LastLink usa decimais, não centavos)
         let plan = 'monthly';
-        if (value >= 79.90) plan = 'annual';
-        else if (value >= 47.90) plan = 'biannual';
-        else if (value >= 26.90) plan = 'quarterly';
+        let planName = 'Mensal - R$ 9,90';
+        
+        if (value >= 79.90) {
+          plan = 'annual';
+          planName = 'Anual - R$ 79,90';
+        } else if (value >= 47.90) {
+          plan = 'biannual';
+          planName = 'Semestral - R$ 47,90';
+        } else if (value >= 26.90) {
+          plan = 'quarterly';
+          planName = 'Trimestral - R$ 26,90';
+        } else if (value >= 9.90) {
+          plan = 'monthly';
+          planName = 'Mensal - R$ 9,90';
+        }
         
         const password = Math.random().toString(36).slice(-8);
         const expiresAt = calculateExpiration(plan);
         
-        console.log(`Plano: ${plan}`);
-        console.log(`Senha: ${password}`);
-        console.log(`Expira: ${expiresAt.toLocaleDateString('pt-BR')}`);
+        console.log(`Plano identificado: ${planName}`);
+        console.log(`Senha gerada: ${password}`);
+        console.log(`Expira em: ${expiresAt.toLocaleDateString('pt-BR')}`);
+        
+        const userData = {
+          email: email,
+          name: buyerName,
+          password: password,
+          plan: plan,
+          planName: planName,
+          status: 'active',
+          expiresAt: expiresAt.toISOString(),
+          createdAt: new Date().toISOString(),
+          activatedBy: 'webhook',
+          paymentAmount: value,
+          paymentMethod: paymentMethod,
+          lastPaymentDate: paymentDate
+        };
+        
+        console.log('Dados do usuário:', JSON.stringify(userData, null, 2));
         
         // TODO: Criar no Firebase
-        console.log('✅ Conta ativada');
-      } else if (IsTest) {
-        console.log('⚠️ Evento de teste ignorado');
+        // await createUserInFirebase(userData);
+        
+        console.log('✅ Conta ativada com sucesso');
+        console.log('================================');
       }
     } 
-    else if (deactivationEvents.includes(Event) && Data) {
-      const email = Data.Member?.Email || Data.Buyer?.Email;
-      console.log(`❌ Desativando conta: ${email}`);
-      // TODO: Desativar no Firebase
+    else if (IsTest) {
+      console.log('⚠️ Evento de teste ignorado automaticamente');
     }
     else {
-      console.log(`ℹ️ Evento ignorado: ${Event}`);
+      console.log(`ℹ️ Evento não processado: ${Event}`);
     }
     
     res.status(200).json({ 
       received: true, 
       timestamp: new Date().toISOString(),
       event: Event,
-      processed: true
+      processed: !IsTest,
+      isTest: IsTest
     });
     
   } catch (error) {
