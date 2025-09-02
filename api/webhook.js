@@ -4,7 +4,7 @@ export default async function handler(req, res) {
   }
 
   try {
-    console.log('=== WEBHOOK RECEBIDO ===');
+    console.log('=== WEBHOOK LASTLINK ===');
     console.log('Body:', JSON.stringify(req.body, null, 2));
     
     if (!req.body) {
@@ -14,58 +14,59 @@ export default async function handler(req, res) {
     const { Event, Data, IsTest } = req.body;
     
     console.log(`Evento: ${Event}`);
-    console.log(`Teste: ${IsTest}`);
+    console.log(`É teste: ${IsTest ? 'SIM' : 'NÃO'}`);
     
-    // Eventos de pagamento da LastLink
-    const paymentEvents = [
-      'Subscription_Renewal_Pending',
-      'Purchase_Approved', 
-      'Purchase_Complete',
-      'Payment_Approved'
+    // Eventos que ATIVAM conta
+    const activationEvents = [
+      'Purchase_Complete', // Compra Completa
+      'Subscription_Renewal_Complete', // Renovação Completa
+      'Payment_Approved' // Pagamento Aprovado
     ];
     
-    if (paymentEvents.includes(Event) && Data) {
+    // Eventos que DESATIVAM conta
+    const deactivationEvents = [
+      'Subscription_Expired', // Assinatura Expirada
+      'Subscription_Cancelled' // Assinatura Cancelada
+    ];
+    
+    if (activationEvents.includes(Event) && Data) {
       const email = Data.Buyer?.Email;
       const value = Data.Purchase?.Price?.Value || Data.Purchase?.OriginalPrice?.Value;
+      const paymentMethod = Data.Purchase?.Payment?.PaymentMethod;
       const buyerName = Data.Buyer?.Name;
       
-      console.log('=== PROCESSANDO PAGAMENTO ===');
-      console.log(`Email: ${email}`);
-      console.log(`Nome: ${buyerName}`);
-      console.log(`Valor: R$ ${value}`);
-      console.log(`Evento: ${Event}`);
-      console.log(`É teste: ${IsTest ? 'SIM' : 'NÃO'}`);
-      
-      if (email && value) {
-        // Converter para centavos para comparação
-        const valueInCents = value * 100;
+      if (email && value && !IsTest) { // Só processar se NÃO for teste
+        console.log('=== ATIVANDO CONTA ===');
+        console.log(`Email: ${email}`);
+        console.log(`Nome: ${buyerName}`);
+        console.log(`Valor: R$ ${value}`);
+        console.log(`Método: ${paymentMethod}`);
         
+        // Determinar plano pelo valor
         let plan = 'monthly';
-        let planName = 'Mensal - R$ 9,90';
-        
-        if (valueInCents >= 7990) {
-          plan = 'annual';
-          planName = 'Anual - R$ 79,90';
-        } else if (valueInCents >= 4790) {
-          plan = 'biannual';
-          planName = 'Semestral - R$ 47,90';
-        } else if (valueInCents >= 2690) {
-          plan = 'quarterly';
-          planName = 'Trimestral - R$ 26,90';
-        }
+        if (value >= 79.90) plan = 'annual';
+        else if (value >= 47.90) plan = 'biannual';
+        else if (value >= 26.90) plan = 'quarterly';
         
         const password = Math.random().toString(36).slice(-8);
         const expiresAt = calculateExpiration(plan);
         
-        console.log(`Plano identificado: ${planName}`);
-        console.log(`Senha gerada: ${password}`);
-        console.log(`Expira em: ${expiresAt.toLocaleDateString('pt-BR')}`);
+        console.log(`Plano: ${plan}`);
+        console.log(`Senha: ${password}`);
+        console.log(`Expira: ${expiresAt.toLocaleDateString('pt-BR')}`);
         
-        // Aqui criar no Firebase futuramente
-        console.log('✅ Usuário processado para ativação');
-        console.log('================================');
+        // TODO: Criar no Firebase
+        console.log('✅ Conta ativada');
+      } else if (IsTest) {
+        console.log('⚠️ Evento de teste ignorado');
       }
-    } else {
+    } 
+    else if (deactivationEvents.includes(Event) && Data) {
+      const email = Data.Member?.Email || Data.Buyer?.Email;
+      console.log(`❌ Desativando conta: ${email}`);
+      // TODO: Desativar no Firebase
+    }
+    else {
       console.log(`ℹ️ Evento ignorado: ${Event}`);
     }
     
