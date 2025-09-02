@@ -1,94 +1,78 @@
 export default async function handler(req, res) {
-  // Só aceita POST
   if (req.method !== 'POST') {
     return res.status(405).json({ error: 'Method not allowed' });
   }
 
   try {
     console.log('=== WEBHOOK RECEBIDO ===');
-    console.log('Timestamp:', new Date().toISOString());
-    console.log('Body:', JSON.stringify(req.body));
-    console.log('Headers User-Agent:', req.headers['user-agent']);
+    console.log('Body:', JSON.stringify(req.body, null, 2));
     
-    // Verificar se tem body
     if (!req.body) {
-      console.log('⚠️ Body vazio recebido');
-      return res.status(200).json({ 
-        received: true, 
-        error: 'empty_body',
-        timestamp: new Date().toISOString()
-      });
+      return res.status(200).json({ received: true, error: 'empty_body' });
     }
     
-    const { event, data } = req.body;
+    const { Event, Data, IsTest } = req.body;
     
-    // Verificar se tem os campos necessários
-    if (!event) {
-      console.log('⚠️ Campo "event" não encontrado');
-      return res.status(200).json({ 
-        received: true, 
-        error: 'missing_event',
-        timestamp: new Date().toISOString()
-      });
-    }
+    console.log(`Evento: ${Event}`);
+    console.log(`Teste: ${IsTest}`);
     
-    // Processar pagamento
-    if (event === 'payment.approved' || event === 'payment.paid') {
-      console.log('💰 Processando pagamento...');
+    // Eventos de pagamento da LastLink
+    const paymentEvents = [
+      'Subscription_Renewal_Pending',
+      'Purchase_Approved', 
+      'Purchase_Complete',
+      'Payment_Approved'
+    ];
+    
+    if (paymentEvents.includes(Event) && Data) {
+      const email = Data.Buyer?.Email;
+      const value = Data.Purchase?.Price?.Value || Data.Purchase?.OriginalPrice?.Value;
+      const buyerName = Data.Buyer?.Name;
       
-      if (!data) {
-        console.log('⚠️ Campo "data" não encontrado');
-        return res.status(200).json({ 
-          received: true, 
-          error: 'missing_data',
-          timestamp: new Date().toISOString()
-        });
-      }
+      console.log('=== PROCESSANDO PAGAMENTO ===');
+      console.log(`Email: ${email}`);
+      console.log(`Nome: ${buyerName}`);
+      console.log(`Valor: R$ ${value}`);
+      console.log(`Evento: ${Event}`);
+      console.log(`É teste: ${IsTest ? 'SIM' : 'NÃO'}`);
       
-      const {
-        customer_email,
-        amount,
-        status,
-        transaction_id
-      } = data;
-      
-      // Determinar plano baseado no valor
-      let plan = 'monthly';
-      let planName = 'Mensal - R$ 9,90';
-      
-      if (amount >= 7990) {
-        plan = 'annual';
-        planName = 'Anual - R$ 79,90';
-      } else if (amount >= 4790) {
-        plan = 'biannual';
-        planName = 'Semestral - R$ 47,90';
-      } else if (amount >= 2690) {
-        plan = 'quarterly';
-        planName = 'Trimestral - R$ 26,90';
-      }
-      
-      if (status === 'paid' && customer_email) {
+      if (email && value) {
+        // Converter para centavos para comparação
+        const valueInCents = value * 100;
+        
+        let plan = 'monthly';
+        let planName = 'Mensal - R$ 9,90';
+        
+        if (valueInCents >= 7990) {
+          plan = 'annual';
+          planName = 'Anual - R$ 79,90';
+        } else if (valueInCents >= 4790) {
+          plan = 'biannual';
+          planName = 'Semestral - R$ 47,90';
+        } else if (valueInCents >= 2690) {
+          plan = 'quarterly';
+          planName = 'Trimestral - R$ 26,90';
+        }
+        
         const password = Math.random().toString(36).slice(-8);
         const expiresAt = calculateExpiration(plan);
         
-        console.log('=== PAGAMENTO PROCESSADO ===');
-        console.log(`Email: ${customer_email}`);
-        console.log(`Valor: R$ ${(amount/100).toFixed(2)}`);
-        console.log(`Plano: ${planName}`);
-        console.log(`Senha: ${password}`);
-        console.log(`Expira: ${expiresAt.toLocaleDateString('pt-BR')}`);
-        console.log(`Transaction: ${transaction_id || 'N/A'}`);
-        console.log('✅ Processado com sucesso');
+        console.log(`Plano identificado: ${planName}`);
+        console.log(`Senha gerada: ${password}`);
+        console.log(`Expira em: ${expiresAt.toLocaleDateString('pt-BR')}`);
+        
+        // Aqui criar no Firebase futuramente
+        console.log('✅ Usuário processado para ativação');
         console.log('================================');
       }
     } else {
-      console.log(`ℹ️ Evento ignorado: ${event}`);
+      console.log(`ℹ️ Evento ignorado: ${Event}`);
     }
     
     res.status(200).json({ 
       received: true, 
       timestamp: new Date().toISOString(),
-      event: event,
+      event: Event,
       processed: true
     });
     
@@ -97,8 +81,7 @@ export default async function handler(req, res) {
     res.status(200).json({ 
       received: true,
       error: 'processed', 
-      message: error.message,
-      timestamp: new Date().toISOString()
+      message: error.message
     });
   }
 }
