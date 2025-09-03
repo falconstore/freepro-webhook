@@ -206,7 +206,7 @@ async function sendWelcomeEmailResend(email, password, plan, expiresAt) {
         'Content-Type': 'application/json'
       },
       body: JSON.stringify({
-        from: 'FreePro <onboarding@resend.dev>', // Temporário até DNS aprovar
+        from: 'FreePro <noreply@freepro.com.br>',
         to: email,
         subject: 'FreePro - Conta Ativada com Sucesso!',
         html: `
@@ -364,7 +364,7 @@ async function sendErrorNotificationResend(customerEmail, errorMessage) {
         'Content-Type': 'application/json'
       },
       body: JSON.stringify({
-        from: 'FreePro <noreply@freepro.com.br>'
+        from: 'FreePro System <onboarding@resend.dev>',
         to: 'falconstoregja@gmail.com', // Seu email de suporte
         subject: 'FreePro - Erro no Processamento de Pagamento',
         html: `
