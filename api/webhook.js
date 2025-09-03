@@ -93,4 +93,55 @@ export default async function handler(req, res) {
     
     return res.status(200).json({ received: true });
     
-  } catch
+  } catch (error) {
+    console.error('Erro:', error.message);
+    return res.status(200).json({ 
+      received: true, 
+      error: error.message 
+    });
+  }
+}
+
+function generatePassword() {
+  const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnpqrstuvwxyz23456789';
+  let password = '';
+  for (let i = 0; i < 8; i++) {
+    password += chars.charAt(Math.floor(Math.random() * chars.length));
+  }
+  return password;
+}
+
+async function sendEmail(email, password, plan, expiresAt) {
+  try {
+    const response = await fetch('https://api.sendgrid.com/v3/mail/send', {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${process.env.SENDGRID_API_KEY}`,
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({
+        personalizations: [{ to: [{ email }] }],
+        from: { email: 'noreply@freepro.com.br', name: 'FreePro' },
+        subject: 'FreePro - Conta Ativada!',
+        content: [{
+          type: 'text/html',
+          value: `
+            <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+              <h1>Bem-vindo ao FreePro!</h1>
+              <p><strong>Email:</strong> ${email}</p>
+              <p><strong>Senha:</strong> ${password}</p>
+              <p><strong>Plano:</strong> ${plan}</p>
+              <p><strong>Válida até:</strong> ${expiresAt.toLocaleDateString('pt-BR')}</p>
+              <a href="https://www.freepro.com.br">Acessar FreePro</a>
+            </div>
+          `
+        }]
+      })
+    });
+    
+    return response.ok;
+  } catch (error) {
+    console.error('Erro email:', error);
+    return false;
+  }
+}
