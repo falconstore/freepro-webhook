@@ -1,6 +1,7 @@
 {
   "name": "freepro-webhook",
   "version": "1.0.0",
+  "type": "module",
   "description": "Webhook para processar pagamentos da LastLink",
   "main": "api/webhook.js",
   "scripts": {
