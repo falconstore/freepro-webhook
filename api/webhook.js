@@ -364,7 +364,7 @@ async function sendErrorNotificationResend(customerEmail, errorMessage) {
         'Content-Type': 'application/json'
       },
       body: JSON.stringify({
-        from: 'FreePro System <onboarding@resend.dev>',
+        from: 'FreePro <noreply@freepro.com.br>'
         to: 'falconstoregja@gmail.com', // Seu email de suporte
         subject: 'FreePro - Erro no Processamento de Pagamento',
         html: `
