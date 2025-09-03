@@ -88,8 +88,8 @@ export default async function handler(req, res) {
             status: 'active',
             plan: plan,
             planName: planName,
-            expiresAt: expiresAt,
-            lastRenewal: new Date(),
+            expiresAt: expiresAt.toISOString(),
+            lastRenewal: new Date().toISOString(),
             renewalPaymentId: paymentId,
             renewalAmount: amount
           });
@@ -109,8 +109,8 @@ export default async function handler(req, res) {
             status: 'active',
             plan: plan,
             planName: planName,
-            expiresAt: expiresAt,
-            createdAt: new Date(),
+            expiresAt: expiresAt.toISOString(),
+            createdAt: new Date().toISOString(),
             paymentId: paymentId,
             paymentDate: paymentDate,
             amount: amount
